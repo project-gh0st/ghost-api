@@ -1,14 +1,12 @@
 package net.raquezha.ghost
 
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.*
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -19,19 +17,37 @@ fun Application.configureDatabases(
     user: String? = null,
     password: String? = null
 ) {
+    attributes.put(AttributeKey<Boolean>("dbConfigured"), true)
     val env = EnvHelper(EnvHelper.REQUIRED_DB_VARS)
-    val database = Database.connect(
-        url = jdbcUrl ?: "jdbc:mysql://${env.get(EnvHelper.DB_HOST)}:${env.get(EnvHelper.DB_PORT)}/${env.get(EnvHelper.DB_NAME)}?useSSL=false&serverTimezone=UTC",
-        driver = driver ?: "com.mysql.cj.jdbc.Driver",
-        user = user ?: env.get(EnvHelper.DB_USER),
-        password = password ?: env.get(EnvHelper.DB_PASSWORD)
-    )
-
-    transaction(database) {
-        SchemaUtils.create(Meetings, UserService.Users)
+    val dbType = System.getenv("DB_TYPE")?.lowercase() ?: "mysql"
+    val dbConfig = when (dbType) {
+        "h2" -> {
+            Database.connect(
+                url = "jdbc:h2:mem:ghost;DB_CLOSE_DELAY=-1;",
+                driver = "org.h2.Driver",
+                user = "sa",
+                password = ""
+            )
+        }
+        else -> {
+            Database.connect(
+                url = jdbcUrl ?: "jdbc:mysql://${env.get(EnvHelper.DB_HOST)}:${env.get(EnvHelper.DB_PORT)}/${env.get(EnvHelper.DB_NAME)}?useSSL=false&serverTimezone=UTC",
+                driver = driver ?: "com.mysql.cj.jdbc.Driver",
+                user = user ?: env.get(EnvHelper.DB_USER),
+                password = password ?: env.get(EnvHelper.DB_PASSWORD)
+            )
+        }
     }
-
-    val userService = UserService(database)
+    try {
+        transaction(dbConfig) {
+            SchemaUtils.create(Meetings, UserService.Users)
+        }
+    } catch (e: Exception) {
+        println("[ERROR] Database connection failed: ${e.message}")
+        println("If you are developing locally, run with: DB_TYPE=h2 ./gradlew run")
+        throw e
+    }
+    val userService = UserService(dbConfig)
     routing {
         // Create user
         post("/users") {
@@ -78,7 +94,7 @@ fun Application.configureDatabases(
                 val formatter = DateTimeFormatter.ISO_DATE_TIME
                 val start = LocalDateTime.parse(req.startTime, formatter)
                 val end = LocalDateTime.parse(req.endTime, formatter)
-                val meetingId = transaction(database) {
+                val meetingId = transaction(dbConfig) {
                     Meetings.insert {
                         it[title] = req.title
                         it[description] = req.description
@@ -87,8 +103,8 @@ fun Application.configureDatabases(
                     } get Meetings.id
                 }
                 println("Inserted meetingId: $meetingId")
-                val meetingResult = transaction(database) {
-                    Meetings.selectAll().filter { it[Meetings.id] == meetingId }
+                val meetingResult = transaction(dbConfig) {
+                    Meetings.selectAll().filter { it[Meetings.id] == meetingId }.toList()
                 }
                 println("Rows found for meetingId $meetingId: ${meetingResult.size}")
                 when {
@@ -111,10 +127,10 @@ fun Application.configureDatabases(
 
         // List all meetings
         get("/meetings") {
-            val meetings = transaction(database) {
+            val meetings = transaction(dbConfig) {
                 Meetings.selectAll().map { it.toMeetingResponse() }
             }
-            call.respond(meetings)
+            call.respond<List<MeetingResponse>>(meetings)
         }
     }
 }

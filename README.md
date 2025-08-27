@@ -45,3 +45,12 @@ If the server starts successfully, you'll see the following output:
 2024-12-04 14:32:45.682 [main] INFO  Application - Responding at http://0.0.0.0:8080
 ```
 
+## Local Development
+
+To run the app with an in-memory H2 database (no MySQL required):
+
+```
+DB_TYPE=h2 ./gradlew run
+```
+
+This is useful for local development and testing. By default, the app tries to connect to MySQL. If you see a database connection error, use the above command.
