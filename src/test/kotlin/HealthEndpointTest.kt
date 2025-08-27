@@ -36,7 +36,7 @@ class HealthEndpointTest {
                     password = "invalid"
                 )
                 module()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Expected: DB connection should fail
             }
         }
