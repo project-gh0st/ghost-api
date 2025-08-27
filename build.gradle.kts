@@ -35,7 +35,7 @@ dependencies {
     implementation(libs.dotenv)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
-    testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation(libs.mockk)
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {

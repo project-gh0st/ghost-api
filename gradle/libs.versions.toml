@@ -7,6 +7,7 @@ logback = "1.4.14"
 hikaricp = "5.0.1"
 mysql = "8.0.33"
 dotenv = "6.4.1"
+mockk = "1.13.10"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -30,6 +31,7 @@ kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version
 hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 mysql = { module = "mysql:mysql-connector-java", version.ref = "mysql" }
 dotenv = { module = "io.github.cdimascio:dotenv-kotlin", version.ref = "dotenv" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
